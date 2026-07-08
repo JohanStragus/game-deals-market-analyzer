@@ -2,3 +2,5 @@
 __pycache__/
 *.pyc
 database/*.sqlite
+database/*.db
+data/raw/*.json
