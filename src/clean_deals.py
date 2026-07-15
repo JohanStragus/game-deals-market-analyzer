@@ -75,5 +75,78 @@ with open("./data/raw/deals_raw.json", "r", encoding="utf-8") as file:
 # Recorremos los datos
 for data in js["list"]:
     # Obtenemos los datos que queremos
-    game_id = data["id"] # TEXT
 
+    # GAMES
+    game_id = data["id"]
+    slug = data["slug"]
+    title = data["title"]
+    game_type = data["type"]
+    mature = data["mature"]
+
+    # SHOPS
+    shop_id = data["deal"]["shop"]["id"]
+    shop_name = data["deal"]["shop"]["name"]
+
+    # DEALS
+
+    current_price = data["deal"]["price"]["amount"]
+    regular_price = data["deal"]["regular"]["amount"]
+    currency = data["deal"]["price"]["currency"]
+    discount_cut = data["deal"]["cut"]
+
+    # Campos calculados
+    saving_amount = round(regular_price - current_price, 2)
+    is_free = current_price == 0
+    
+    # Estos campos podrían venir como null
+    store_low_data = data["deal"].get("storeLow")
+    store_low = store_low_data["amount"] if store_low_data else None
+
+    history_low_data = data["deal"].get("historyLow")
+    history_low = history_low_data["amount"] if history_low_data else None
+
+    history_low_1y_data = data["deal"].get("historyLow_1y")
+    history_low_1y = history_low_1y_data["amount"] if history_low_1y_data else None
+
+    history_low_3m_data = data["deal"].get("historyLow_3m")
+    history_low_3m = history_low_3m_data["amount"] if history_low_3m_data else None
+
+    timestamp = data["deal"]["timestamp"]
+    expiry = data["deal"].get("expiry")
+    url = data["deal"]["url"]
+
+    # Guardamos si es True o False si el precio es menor o igual al historico
+    is_historical_low = current_price <= history_low if history_low is not None else None
+
+    # Clasificamos el precio actual por rangos
+    if current_price == 0:
+        price_range = "Gratis"
+    elif current_price < 5:
+        price_range = "0,01€ - 4,99€"
+    elif current_price < 10:
+        price_range = "5€ - 9,99€"
+    elif current_price < 20:
+        price_range = "10€ - 19,99€"
+    elif current_price < 40:
+        price_range = "20€ - 39,99€"
+    else:
+        price_range = "40€ o más"
+
+    # Clasificamos el descuento por rangos
+    if discount_cut == 100:
+        discount_range = "100%"
+    elif discount_cut >= 90:
+        discount_range = "90% - 99%"
+    elif discount_cut >= 75:
+        discount_range = "75% - 89%"
+    elif discount_cut >= 50:
+        discount_range = "50% - 74%"
+    elif discount_cut >= 25:
+        discount_range = "25% - 49%"
+    else:
+        discount_range = "0% - 24%"
+
+    # DRMS
+
+    # Al ser una lista la obtenemos para recorrerla después y si no tiene nada ponemos una lista vacía
+    drms = data["deal"].get("drm") or []
