@@ -72,12 +72,22 @@ with open("./data/raw/deals_raw.json", "r", encoding="utf-8") as file:
     # Obtenemos los datos del archivo JSON y lo convertimos en un objeto Python
     js = json.load(file)
 
+# Guardamos los game_id ya procesados para evitar duplicados
+game_ids_procesados = set()
+
 # Recorremos los datos
 for data in js["list"]:
-    # Obtenemos los datos que queremos
+    # 1. OBTENER, LIMPIAR, TRANSFORMAR LOS DATOS QUE QUEREMOS
 
     # GAMES
     game_id = data["id"]
+
+    # Si el juego ya se procesó, saltamos este registro duplicado
+    if game_id in game_ids_procesados:
+        continue
+
+    game_ids_procesados.add(game_id)
+    
     slug = data["slug"]
     title = data["title"]
     game_type = data["type"]
@@ -88,7 +98,6 @@ for data in js["list"]:
     shop_name = data["deal"]["shop"]["name"]
 
     # DEALS
-
     current_price = data["deal"]["price"]["amount"]
     regular_price = data["deal"]["regular"]["amount"]
     currency = data["deal"]["price"]["currency"]
@@ -147,6 +156,80 @@ for data in js["list"]:
         discount_range = "0% - 24%"
 
     # DRMS
-
     # Al ser una lista la obtenemos para recorrerla después y si no tiene nada ponemos una lista vacía
     drms = data["deal"].get("drm") or []
+
+    # 2. INSERTAR DATOS LIMPIOS EN SQLITE
+
+    # Games
+    cur.execute(""" INSERT OR IGNORE INTO games(game_id, slug, title, type, mature) VALUES(?, ?, ?, ?, ?)""",
+                (game_id, slug, title, game_type, mature))
+    
+    # shops
+    cur.execute(""" INSERT OR IGNORE INTO shops(shop_id, shop_name) VALUES(?, ?)""", 
+                (shop_id, shop_name))
+    
+    # deals
+    cur.execute(""" INSERT INTO deals (
+                                                game_id,
+                                                shop_id,
+                                                current_price,
+                                                regular_price,
+                                                currency,
+                                                discount_cut,
+                                                saving_amount,
+                                                store_low,
+                                                history_low,
+                                                history_low_1y,
+                                                history_low_3m,
+                                                timestamp,
+                                                expiry,
+                                                url,
+                                                is_free,
+                                                is_historical_low,
+                                                price_range,
+                                                discount_range
+                                            ) 
+                                            VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", 
+                                            (
+                                            game_id,
+                                            shop_id,
+                                            current_price,
+                                            regular_price,
+                                            currency,
+                                            discount_cut,
+                                            saving_amount,
+                                            store_low,
+                                            history_low,
+                                            history_low_1y,
+                                            history_low_3m,
+                                            timestamp,
+                                            expiry,
+                                            url,
+                                            is_free,
+                                            is_historical_low,
+                                            price_range,
+                                            discount_range
+                                            ))
+    # Obtenemos el ID automático generado para la oferta
+    deal_id = cur.lastrowid
+
+    # drms
+
+    # Recorremos la lista
+    for drm in drms:
+        # Obtenemos los datos
+        drm_id = drm["id"]
+        drm_name = drm["name"]
+
+        # Lo insertamos en la tabla drms
+        cur.execute(""" INSERT OR IGNORE INTO drms(drm_id, drm_name) VALUES(?, ?)
+                    """, (drm_id, drm_name))
+        
+        # Lo insertamos en la relación entre deal y drm
+        cur.execute(""" INSERT OR IGNORE INTO deal_drms(deal_id, drm_id) VALUES(?, ?)""",
+                    (deal_id, drm_id))
+        
+# Guardamos todos los cambios y cerramos la conexión
+conn.commit()
+conn.close()
