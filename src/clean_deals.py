@@ -1,5 +1,6 @@
 import sqlite3
 import json
+import csv
 
 # Creamos la conexión con la base de datos y si no existe crea el archivo
 conn = sqlite3.connect("./database/bd_games.sqlite")
@@ -229,7 +230,105 @@ for data in js["list"]:
         # Lo insertamos en la relación entre deal y drm
         cur.execute(""" INSERT OR IGNORE INTO deal_drms(deal_id, drm_id) VALUES(?, ?)""",
                     (deal_id, drm_id))
-        
-# Guardamos todos los cambios y cerramos la conexión
+
+# Guardamos todos los cambios
 conn.commit()
+
+# 3 Creación de CSV
+
+# ---------------- GAMES ----------------
+# Hacemos la consulta de games con todos sus datos
+cur.execute("SELECT * FROM games")
+games = cur.fetchall()
+
+# Creamos/sobreescribimos el archivo en la ruta indicada
+with open("./data/clean/games.csv", "w", newline="", encoding="utf-8") as file:
+    # Creamos una variable para escribir en formato csv en el fichero
+    writer = csv.writer(file)
+
+    # Escribimos solo una fila como cabecera para representar el header
+    writer.writerow(["game_id","slug","title","type","mature"])
+
+    # Acto seguido ya podemos escribir todas las filas en el archivo
+    writer.writerows(games)
+
+# ---------------- SHOPS ----------------
+cur.execute("SELECT * FROM shops")
+shops = cur.fetchall()
+
+with open("./data/clean/shops.csv", "w", newline="", encoding="utf-8") as file:
+    # Creamos la variable writer para escribir dentro del archivo en formato CSV
+    writer = csv.writer(file)
+
+    # Creamos el header / primera fila del archivo
+    writer.writerow(["shop_id", "shop_name"])
+
+    # Escribimos el resto de filas
+    writer.writerows(shops)
+
+# ---------------- DEALS ----------------
+cur.execute("SELECT * FROM deals")
+deals = cur.fetchall()
+
+with open("./data/clean/deals.csv", "w", newline="", encoding="utf-8") as file:
+    # Creamos la variable writer que servirá para escribir en formato CSV en el archivo
+    writer = csv.writer(file)
+
+    # Construimos la primera fila que representara el header
+    writer.writerow([
+    "deal_id",
+    "game_id",
+    "shop_id",
+    "current_price",
+    "regular_price",
+    "currency",
+    "discount_cut",
+    "saving_amount",
+    "store_low",
+    "history_low",
+    "history_low_1y",
+    "history_low_3m",
+    "timestamp",
+    "expiry",
+    "url",
+    "is_free",
+    "is_historical_low",
+    "price_range",
+    "discount_range"
+    ])
+
+    # Escribimos el resto de lass rows debajo
+    writer.writerows(deals)
+
+# ---------------- DRMS ----------------
+cur.execute("SELECT * FROM drms")
+drms = cur.fetchall()
+
+# Abrimos el archivo y sobreescribimos, si no existe en la ruta indicada lo crea
+with open("./data/clean/drms.csv", "w", newline="", encoding="utf-8") as file:
+    # Creamos una variable para poder escribir dentro del archivo en formato CSV
+    writer = csv.writer(file)
+
+    # Creamos la primera fila o lo que sería el header
+    writer.writerow(["drm_id", "drm_name"])
+
+    # Acto seguido escribimos todos los datos
+    writer.writerows(drms)
+
+# ---------------- DEAL_DRMS ----------------
+cur.execute("SELECT * FROM deal_drms")
+deal_drms = cur.fetchall()
+
+# Abrimos el archivo y sobreescribimos, si no existe en la ruta indicada lo crea
+with open("./data/clean/deal_drms.csv", "w", newline="", encoding="utf-8") as file:
+    # Creamos una variable para poder escribir dentro del archivo en formato CSV
+    writer = csv.writer(file)
+
+    # Creamos la primera fila o lo que sería el header
+    writer.writerow(["deal_id", "drm_id"])
+
+    # Escribimos todos los datos después
+    writer.writerows(deal_drms)
+
+# Cerramos conexión
 conn.close()
